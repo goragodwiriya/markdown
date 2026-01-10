@@ -1,0 +1,33 @@
+{
+  "name": "markdown-to-pdf-generator",
+  "version": "1.0.0",
+  "description": "A professional, framework-free Markdown to PDF converter built with vanilla JavaScript",
+  "main": "src/index.js",
+  "scripts": {
+    "example": "node examples/usage.js",
+    "test": "echo \"No tests specified yet\" && exit 0"
+  },
+  "keywords": [
+    "markdown",
+    "pdf",
+    "converter",
+    "html",
+    "css",
+    "vanilla-javascript",
+    "gfm",
+    "github-flavored-markdown"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/markdown-to-pdf"
+  },
+  "bugs": {
+    "url": "https://github.com/example/markdown-to-pdf/issues"
+  },
+  "homepage": "https://github.com/example/markdown-to-pdf#readme"
+}

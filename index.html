@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+        rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Sarabun", sans-serif;
+      background-color: #EEE;
+      color: #1a1a1a;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #dmermaid-svg-0 {
+      display: none;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      width: 280px;
+      height: calc(100vh - 60px);
+      background: white;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      z-index: 998;
+      transition: left 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      left: -280px;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+      group: file-item;
+    }
+
+    .file-item:hover {
+      background: #f3f4f6;
+    }
+
+    .file-item.active {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    .file-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-date {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .file-delete {
+      opacity: 0;
+      padding: 4px 8px;
+      background: #fee2e2;
+      color: #dc2626;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .file-item:hover .file-delete {
+      opacity: 1;
+    }
+
+    .file-delete:hover {
+      background: #fecaca;
+    }
+
+    .sidebar-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: #9ca3af;
+    }
+
+    .sidebar-empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+
+    .sidebar-empty-text {
+      font-size: 13px;
+    }
+
+    .sidebar-toggle {
+      position: fixed;
+      top: 84px;
+      left: 279px;
+      width: 24px;
+      height: 3em;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 999;
+      transition: left 0.3s ease;
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .sidebar-toggle:hover {
+      background: #f9fafb;
+    }
+
+    .sidebar.collapsed+.sidebar-toggle {
+      left: 0;
+    }
+
+    .sidebar-toggle-icon {
+      line-height: 1;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.collapsed+.sidebar-toggle .sidebar-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      z-index: 1000;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .toolbar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      background: transparent;
+      color: #6b7280;
+    }
+
+    .btn-icon:hover {
+      background: #f3f4f6;
+      color: #1a1a1a;
+    }
+
+    /* File input */
+    #file-input {
+      display: none;
+    }
+
+    /* Main content */
+    .main-content {
+      position: fixed;
+      top: 60px;
+      left: 280px;
+      right: 0;
+      bottom: 0;
+      overflow-y: auto;
+      transition: left 0.3s ease;
+    }
+
+    .sidebar.collapsed~.main-content {
+      left: 0;
+    }
+
+    /* Document container */
+    .document {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 40px;
+      min-height: calc(100vh - 60px);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      background-color: #FFF;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+      opacity: 0.3;
+    }
+
+    .empty-state-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    .empty-state-text {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 32px;
+      max-width: 400px;
+    }
+
+    /* Document styling */
+    .document h1,
+    .document h2,
+    .document h3,
+    .document h4,
+    .document h5,
+    .document h6 {
+      margin-top: 32px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: #1a1a1a;
+    }
+
+    .document h1 {
+      font-size: 2.5em;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 12px;
+      margin-top: 0;
+    }
+
+    .document h2 {
+      font-size: 2em;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    .document h3 {
+      font-size: 1.5em;
+    }
+
+    .document h4 {
+      font-size: 1.25em;
+    }
+
+    .document h5 {
+      font-size: 1.1em;
+    }
+
+    .document h6 {
+      font-size: 1em;
+      color: #6b7280;
+    }
+
+    .document p {
+      margin-bottom: 16px;
+      line-height: 1.7;
+      color: #374151;
+    }
+
+    .document a {
+      color: #2563eb;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .document a:hover {
+      border-bottom-color: #2563eb;
+    }
+
+    .document ul,
+    .document ol {
+      margin-bottom: 16px;
+      padding-left: 28px;
+    }
+
+    .document li {
+      margin-bottom: 8px;
+      line-height: 1.7;
+      color: #374151;
+    }
+
+    .document code {
+      padding: 2px 6px;
+      font-size: 0.9em;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: #dc2626;
+    }
+
+    .document pre {
+      padding: 20px;
+      background: #1e293b;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .document pre code {
+      display: block;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+
+    /* Mermaid diagrams */
+    .document .mermaid-container {
+      margin: 32px 0;
+      padding: 24px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .document .mermaid {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+    }
+
+    .document .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .document .mermaid-error {
+      color: #dc2626;
+      background: #fee2e2;
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+    }
+
+    .document table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .document table th,
+    .document table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .document table th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .document table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .document table tr:hover {
+      background: #f9fafb;
+    }
+
+    .document blockquote {
+      padding: 16px 20px;
+      margin: 20px 0;
+      background: #f9fafb;
+      border-left: 4px solid #2563eb;
+      border-radius: 0 6px 6px 0;
+      color: #374151;
+    }
+
+    .document hr {
+      height: 2px;
+      margin: 32px 0;
+      background: linear-gradient(90deg, transparent, #e5e7eb 50%, transparent);
+      border: none;
+    }
+
+    .document img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 24px auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .document strong {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .document em {
+      font-style: italic;
+    }
+
+    .document s {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    /* Syntax highlighting */
+    .document .highlighted .keyword {
+      color: #f472b6;
+      font-weight: bold;
+    }
+
+    .document .highlighted .boolean {
+      color: #60a5fa;
+    }
+
+    .document .highlighted .number {
+      color: #60a5fa;
+    }
+
+    .document .highlighted .string {
+      color: #34d399;
+    }
+
+    .document .highlighted .comment {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* Settings panel */
+    .settings-panel {
+      position: fixed;
+      top: 60px;
+      right: -320px;
+      width: 320px;
+      height: calc(100vh - 60px);
+      background: white;
+      border-left: 1px solid #e5e7eb;
+      padding: 24px;
+      overflow-y: auto;
+      transition: right 0.3s ease;
+      z-index: 999;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-panel.open {
+      right: 0;
+    }
+
+    .settings-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #1a1a1a;
+    }
+
+    .setting-group {
+      margin-bottom: 24px;
+    }
+
+    .setting-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    .setting-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .setting-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .setting-checkbox input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .setting-checkbox label {
+      font-size: 14px;
+      color: #374151;
+      cursor: pointer;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .document {
+        padding: 40px 20px;
+      }
+
+      .toolbar {
+        padding: 0 16px;
+      }
+
+      .settings-panel {
+        width: 100%;
+        right: -100%;
+      }
+
+      .sidebar {
+        width: 100%;
+        left: -100%;
+      }
+
+      .sidebar.collapsed {
+        left: -100%;
+      }
+
+      .sidebar-toggle {
+        left: 0;
+      }
+
+      .main-content {
+        left: 0;
+      }
+    }
+
+    /* Print styles - ทำให้เหมือน preview เป๊ะๆ */
+    @media print {
+      @page {
+        size: A4;
+        margin: 2cm;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      body {
+        background-color: #FFF;
+      }
+
+      .sidebar-toggle,
+      .sidebar,
+      .toolbar,
+      .settings-panel,
+      .empty-state {
+        display: none !important;
+      }
+
+      .main-content {
+        position: static;
+        top: 0;
+        overflow: visible;
+      }
+
+      .document {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+      }
+
+      .document h1,
+      .document h2,
+      .document h3,
+      .document h4,
+      .document h5,
+      .document h6 {
+        page-break-before: avoid;
+      }
+
+      .document pre,
+      .document .mermaid-container,
+      .document table {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+
+  <!-- Load Mermaid -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <!-- Load all required scripts -->
+  <script src="src/utils/Logger.js"></script>
+  <script src="src/utils/Sanitizer.js"></script>
+  <script src="src/core/ConfigManager.js"></script>
+  <script src="src/core/MarkdownParser.js"></script>
+  <script src="src/core/HTMLRenderer.js"></script>
+  <script src="src/core/PDFGenerator.js"></script>
+  <script src="src/plugins/SyntaxHighlighter.js"></script>
+  <script src="src/plugins/TOCGenerator.js"></script>
+  <script src="src/plugins/ImageProcessor.js"></script>
+  <script src="src/index.js"></script>
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">📚 My Library</div>
+    </div>
+    <div class="sidebar-content" id="sidebar-content">
+      <div class="sidebar-empty">
+        <div class="sidebar-empty-icon">📄</div>
+        <div class="sidebar-empty-text">No saved files yet<br>Open a file and click Save</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar toggle -->
+  <div class="sidebar-toggle" onclick="toggleSidebar()">
+    <span class="sidebar-toggle-icon">◀</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-title" id="document-title">Markdown Viewer</div>
+    <div class="toolbar-actions">
+      <button class="btn btn-secondary" onclick="openFile()">
+        📁 Open File
+      </button>
+      <button class="btn btn-secondary" onclick="saveToLibrary()" id="save-btn" style="display: none;">
+        💾 Save
+      </button>
+      <button class="btn btn-icon" onclick="toggleSettings()" title="Settings">
+        ⚙️
+      </button>
+      <button class="btn btn-primary" onclick="generatePDF()" id="pdf-btn" style="display: none;">
+        📥 Export PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-state-icon">📊</div>
+      <div class="empty-state-title">No Document Loaded</div>
+      <div class="empty-state-text">
+        Open a Markdown file with Mermaid diagrams support (flowcharts, ER diagrams, sequence diagrams, and more)
+      </div>
+      <button class="btn btn-primary" onclick="openFile()">
+        📁 Open Markdown File
+      </button>
+    </div>
+
+    <!-- Document -->
+    <div class="document" id="document" style="display: none;"></div>
+  </div>
+
+  <!-- Settings panel -->
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-title">Settings</div>
+
+    <div class="setting-group">
+      <label class="setting-label">Page Size</label>
+      <select class="setting-select" id="page-size">
+        <option value="A4" selected>A4</option>
+        <option value="A3">A3</option>
+        <option value="A5">A5</option>
+        <option value="Letter">Letter</option>
+        <option value="Legal">Legal</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label class="setting-label">Features</label>
+      <div class="setting-checkbox">
+        <input type="checkbox" id="enable-toc" onchange="reloadDocument()">
+        <label for="enable-toc">Table of Contents</label>
+      </div>
+      <div class="setting-checkbox">
+        <input type="checkbox" id="syntax-highlighting" checked onchange="reloadDocument()">
+        <label for="syntax-highlighting">Syntax Highlighting</label>
+      </div>
+      <div class="setting-checkbox">
+        <input type="checkbox" id="enable-mermaid" checked onchange="reloadDocument()">
+        <label for="enable-mermaid">Mermaid Diagrams</label>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label class="setting-label">Mermaid Theme</label>
+      <select class="setting-select" id="mermaid-theme" onchange="reloadDocument()">
+        <option value="default" selected>Default</option>
+        <option value="dark">Dark</option>
+        <option value="forest">Forest</option>
+        <option value="neutral">Neutral</option>
+        <option value="base">Base</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- File input -->
+  <input type="file" id="file-input" accept=".md,.markdown,.txt" onchange="handleFileSelect(event)">
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <script>
+    let generator;
+    let currentMarkdown = '';
+    let currentFileName = '';
+    let mermaidInitialized = false;
+    let db;
+
+    // Escape HTML to prevent XSS
+    function escapeHTML(str) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;'
+      };
+      return String(str).replace(/[&<>"']/g, char => map[char]);
+    }
+
+    // Initialize IndexedDB
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MarkdownLibrary', 1);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('files')) {
+            const store = db.createObjectStore('files', {keyPath: 'name'});
+            store.createIndex('date', 'date', {unique: false});
+          }
+        };
+      });
+    }
+
+    // Save file to IndexedDB
+    async function saveToLibrary() {
+      if (!currentMarkdown || !currentFileName) {
+        alert('No file to save');
+        return;
+      }
+
+      try {
+        const transaction = db.transaction(['files'], 'readwrite');
+        const store = transaction.objectStore('files');
+
+        const fileData = {
+          name: currentFileName,
+          content: currentMarkdown,
+          date: Date.now()
+        };
+
+        await store.put(fileData);
+
+        alert('✅ File saved to library!');
+        loadLibrary();
+      } catch (error) {
+        console.error('Error saving file:', error);
+        alert('❌ Error saving file: ' + error.message);
+      }
+    }
+
+    // Load library files
+    async function loadLibrary() {
+      try {
+        const transaction = db.transaction(['files'], 'readonly');
+        const store = transaction.objectStore('files');
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+          const files = request.result;
+          renderLibrary(files);
+        };
+      } catch (error) {
+        console.error('Error loading library:', error);
+      }
+    }
+
+    // Render library files
+    function renderLibrary(files) {
+      const container = document.getElementById('sidebar-content');
+
+      if (!files || files.length === 0) {
+        container.innerHTML = `
+          <div class="sidebar-empty">
+            <div class="sidebar-empty-icon">📄</div>
+            <div class="sidebar-empty-text">No saved files yet<br>Open a file and click Save</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort by date (newest first)
+      files.sort((a, b) => b.date - a.date);
+
+      container.innerHTML = files.map(file => {
+        const date = new Date(file.date);
+        const dateStr = date.toLocaleDateString('th-TH', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const isActive = file.name === currentFileName;
+        const safeName = escapeHTML(file.name);
+        const safeNameAttr = safeName.replace(/'/g, "\\'");
+
+        return `
+          <div class="file-item ${isActive ? 'active' : ''}" onclick="loadFromLibrary('${safeNameAttr}')">
+            <span class="file-icon">📄</span>
+            <div class="file-info">
+              <div class="file-name">${safeName}</div>
+              <div class="file-date">${dateStr}</div>
+            </div>
+            <button class="file-delete" onclick="event.stopPropagation(); deleteFromLibrary('${safeNameAttr}')">🗑️</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Load file from library
+    async function loadFromLibrary(fileName) {
+      try {
+        const transaction = db.transaction(['files'], 'readonly');
+        const store = transaction.objectStore('files');
+        const request = store.get(fileName);
+
+        request.onsuccess = () => {
+          const file = request.result;
+          if (file) {
+            currentMarkdown = file.content;
+            currentFileName = file.name;
+            document.getElementById('document-title').textContent = file.name;
+            renderDocument();
+            loadLibrary(); // Refresh to update active state
+          }
+        };
+      } catch (error) {
+        console.error('Error loading file:', error);
+        alert('Error loading file: ' + error.message);
+      }
+    }
+
+    // Delete file from library
+    async function deleteFromLibrary(fileName) {
+      if (!confirm(`Delete "${fileName}" from library?`)) {
+        return;
+      }
+
+      try {
+        const transaction = db.transaction(['files'], 'readwrite');
+        const store = transaction.objectStore('files');
+        await store.delete(fileName);
+
+        loadLibrary();
+
+        // Clear current document if it was deleted
+        if (currentFileName === fileName) {
+          currentMarkdown = '';
+          currentFileName = '';
+          document.getElementById('document-title').textContent = 'Markdown Viewer';
+          document.getElementById('document').style.display = 'none';
+          document.getElementById('empty-state').style.display = 'flex';
+          document.getElementById('pdf-btn').style.display = 'none';
+          document.getElementById('save-btn').style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Error deleting file: ' + error.message);
+      }
+    }
+
+    // Toggle sidebar
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    // Initialize
+    async function init() {
+      updateGenerator();
+      initMermaid();
+      await initDB();
+      loadLibrary();
+    }
+
+    // Initialize Mermaid
+    function initMermaid() {
+      if (typeof mermaid !== 'undefined') {
+        const theme = document.getElementById('mermaid-theme').value;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: theme,
+          securityLevel: 'strict',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: false,
+            curve: 'basis'
+          },
+          themeVariables: {
+            fontSize: '16px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }
+        });
+        mermaidInitialized = true;
+      }
+    }
+
+    // Update generator with current settings
+    function updateGenerator() {
+      const config = {
+        pageSize: document.getElementById('page-size').value,
+        enableTOC: document.getElementById('enable-toc').checked,
+        syntaxHighlighting: document.getElementById('syntax-highlighting').checked,
+        sanitizeHTML: true,
+        footer: {
+          enabled: false
+        }
+      };
+
+      generator = new MarkdownToPDF(config);
+    }
+
+    // Open file dialog
+    function openFile() {
+      document.getElementById('file-input').click();
+    }
+
+    // Handle file selection
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      currentFileName = file.name;
+      document.getElementById('document-title').textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentMarkdown = e.target.result;
+        renderDocument();
+      };
+      reader.readAsText(file);
+    }
+
+    // Process Mermaid code blocks
+    function processMermaidBlocks(markdown) {
+      return markdown.replace(/```mermaid\n([\s\S]*?)```/g, function(match, code) {
+        const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+        return '\n<div class="mermaid-container"><div class="mermaid" id="' + id + '">\n' + code.trim() + '\n</div></div>\n';
+      });
+    }
+
+    // Render document
+    function renderDocument() {
+      if (!currentMarkdown) return;
+
+      updateGenerator();
+      initMermaid();
+
+      const documentEl = document.getElementById('document');
+      const emptyState = document.getElementById('empty-state');
+      const pdfBtn = document.getElementById('pdf-btn');
+
+      try {
+        let markdown = currentMarkdown;
+
+        if (document.getElementById('enable-mermaid').checked && mermaidInitialized) {
+          markdown = processMermaidBlocks(markdown);
+        }
+
+        const html = generator.parser.parse(markdown);
+
+        documentEl.innerHTML = html;
+        documentEl.style.display = 'block';
+        emptyState.style.display = 'none';
+        pdfBtn.style.display = 'flex';
+        document.getElementById('save-btn').style.display = 'flex';
+
+        if (document.getElementById('enable-mermaid').checked && mermaidInitialized) {
+          setTimeout(renderMermaidDiagrams, 100);
+        }
+
+        document.querySelector('.main-content').scrollTop = 0;
+
+      } catch (error) {
+        console.error('Error rendering document:', error);
+        alert('Error rendering document: ' + error.message);
+      }
+    }
+
+    // Render Mermaid diagrams
+    async function renderMermaidDiagrams() {
+      if (!mermaidInitialized) return;
+
+      const mermaidElements = document.querySelectorAll('.mermaid');
+
+      for (let i = 0; i < mermaidElements.length; i++) {
+        const element = mermaidElements[i];
+        try {
+          const code = element.textContent.trim();
+          const uniqueId = 'mermaid-svg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+          const {svg} = await mermaid.render(uniqueId, code);
+          element.innerHTML = svg;
+
+        } catch (error) {
+          console.error('Mermaid render error:', error);
+          element.innerHTML = '<div class="mermaid-error">⚠️ Error rendering diagram: ' + error.message + '</div>';
+        }
+      }
+    }
+
+    // Reload document with new settings
+    function reloadDocument() {
+      if (currentMarkdown) {
+        renderDocument();
+      }
+    }
+
+    // Toggle settings panel
+    function toggleSettings() {
+      const panel = document.getElementById('settings-panel');
+      panel.classList.toggle('open');
+    }
+
+    // Generate PDF - ใช้ browser print โดยตรง
+    function generatePDF() {
+      if (!currentMarkdown) return;
+      window.print();
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        openFile();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        if (currentMarkdown) {
+          generatePDF();
+        }
+      }
+
+      if (e.key === 'Escape') {
+        const panel = document.getElementById('settings-panel');
+        panel.classList.remove('open');
+      }
+    });
+
+    // Close settings when clicking outside
+    document.addEventListener('click', function(e) {
+      const panel = document.getElementById('settings-panel');
+      const settingsBtn = e.target.closest('.btn-icon');
+
+      if (!panel.contains(e.target) && !settingsBtn && panel.classList.contains('open')) {
+        panel.classList.remove('open');
+      }
+    });
+
+    // Drag and drop support
+    document.addEventListener('dragover', function(e) {
+      e.preventDefault();
+    });
+
+    document.addEventListener('drop', function(e) {
+      e.preventDefault();
+
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt'))) {
+        currentFileName = file.name;
+        document.getElementById('document-title').textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          currentMarkdown = event.target.result;
+          renderDocument();
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Load file from URL path
+    async function loadFileFromURL() {
+      const path = window.location.pathname;
+
+      // Check if path ends with .md or .markdown
+      if (path.match(/\.(md|markdown)$/i)) {
+        const fileName = path.split('/').pop();
+
+        // Try multiple paths to find the file
+        const possiblePaths = [
+          'examples/' + fileName,           // Relative to current location
+          '../examples/' + fileName,        // One level up
+          './examples/' + fileName          // Explicit current directory
+        ];
+
+        let loaded = false;
+
+        for (const filePath of possiblePaths) {
+          try {
+            const response = await fetch(filePath);
+
+            if (response.ok) {
+              currentMarkdown = await response.text();
+              currentFileName = fileName;
+              document.getElementById('document-title').textContent = fileName;
+              renderDocument();
+              loaded = true;
+              break;
+            }
+          } catch (error) {
+            // Try next path
+            continue;
+          }
+        }
+
+        if (!loaded) {
+          console.error('Error loading file from URL: File not found');
+
+          // Show error in empty state
+          const emptyState = document.getElementById('empty-state');
+          emptyState.querySelector('.empty-state-icon').textContent = '❌';
+          emptyState.querySelector('.empty-state-title').textContent = 'File Not Found';
+          emptyState.querySelector('.empty-state-text').textContent =
+            'Could not load "' + fileName + '" from examples folder. Please check if the file exists.';
+        }
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('load', async function() {
+      await init();
+      loadFileFromURL();
+    });
+  </script>
+</body>
+
+</html>
